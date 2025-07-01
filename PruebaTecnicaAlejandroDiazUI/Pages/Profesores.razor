@@ -1,0 +1,109 @@
+﻿@page "/profesores"
+@using PruebaTecnicaAlejandroDiaz.Models
+@using PruebaTecnicaAlejandroDiazUI.Models
+@inject ApiServices Api
+
+<h3>Lista de Profesores</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Escuela</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if(lstProfesores?.DataResponse!=null){
+
+        @foreach (var profe in lstProfesores.DataResponse)
+        {
+            <tr>
+                <td>@profe.ProfesorId</td>
+                <td>@profe.Nombre</td>
+                <td>@profe.Apellido</td>
+                @lstEscuelas.DataResponse.FirstOrDefault(e => e.EscuelaId == profe.EscuelaId)?.Nombre
+                <td>
+                    <button @onclick="() => Editar(profe)">Editar</button>
+                    <button @onclick="() => Eliminar(profe.ProfesorId)">Eliminar</button>
+                </td>
+            </tr>
+        }
+        }else{
+            <p>Cargando profesores o no se encontraron registros.</p>
+        }
+    </tbody>
+</table>
+
+<h3>@(profesorActual.ProfesorId == 0 ? "Agregar Profesor" : "Editar Profesor")</h3>
+
+<EditForm Model="@profesorActual" OnValidSubmit="Guardar">
+    <InputText @bind-Value="profesorActual.Nombre" placeholder="Nombre" class="form-control" />
+    <InputText @bind-Value="profesorActual.Apellido" placeholder="Apellido" class="form-control" />
+
+    <label>Escuela</label>
+    <InputSelect @bind-Value="profesorActual.EscuelaId" class="form-control">
+        <option disabled value="0">Seleccione una escuela</option>
+        @foreach (var escuela in lstEscuelas.DataResponse)
+        {
+            <option value="@escuela.EscuelaId">@escuela.Nombre</option>
+        }
+    </InputSelect>
+
+    <button type="submit">Guardar</button>
+</EditForm>
+
+@code {
+    private ResponseModel<List<ProfesorModel>> lstProfesores = new() { DataResponse = new() };
+    private ResponseModel<List<EscuelaModels>> lstEscuelas = new() { DataResponse = new() };
+    private ProfesorModel profesorActual = new();
+    private ResponseModel<ProfesorModel> _profesorActual = new() { DataResponse = new() };
+
+    protected override async Task OnInitializedAsync()
+    {
+        lstProfesores = await Api.GetListaProfesores();
+        lstEscuelas = await Api.GetListaEscuela();
+    }
+
+    void Editar(ProfesorModel p)
+    {
+        profesorActual = new ProfesorModel
+        {
+            ProfesorId = p.ProfesorId,
+            Nombre = p.Nombre,
+            Apellido = p.Apellido,
+            EscuelaId = p.EscuelaId
+        };
+    }
+
+    async Task Guardar()
+    {
+        if (profesorActual.ProfesorId == 0)
+        {
+            _profesorActual = await Api.CreateProfesor(
+                profesorActual.Nombre,
+                profesorActual.Apellido,
+                profesorActual.EscuelaId);
+        }
+        else
+        {
+            _profesorActual = await Api.UpdateProfesor(
+                profesorActual.ProfesorId,
+                profesorActual.Nombre,
+                profesorActual.Apellido,
+                profesorActual.EscuelaId);
+        }
+
+        lstProfesores = await Api.GetListaProfesores();
+        profesorActual = new();
+    }
+
+    async Task Eliminar(int id)
+    {
+        await Api.DeleteProfesor(id);
+        lstProfesores = await Api.GetListaProfesores();
+        profesorActual = new();
+    }
+}

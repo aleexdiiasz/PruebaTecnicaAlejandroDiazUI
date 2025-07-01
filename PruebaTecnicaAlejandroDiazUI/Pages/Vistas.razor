@@ -1,0 +1,81 @@
+﻿@page "/vistas"
+@using PruebaTecnicaAlejandroDiaz.Models
+@using PruebaTecnicaAlejandroDiazUI.Models
+@inject ApiServices Api
+
+<h3>Alumnos por Profesor</h3>
+
+<div class="mb-3">
+    <label>Seleccione un Profesor:</label>
+    <select class="form-control" @onchange="OnProfesorChanged">
+        <option value="">-- Seleccione --</option>
+        @foreach (var prof in profesores)
+        {
+            <option value="@prof.ProfesorId">@($"{prof.Nombre} {prof.Apellido}")</option>
+        }
+    </select>
+</div>
+
+@if (lstAlumnosProf != null && lstAlumnosProf.Count > 0)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Alumno</th>
+                <th>Escuela</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in lstAlumnosProf)
+            {
+                <tr>
+                    <td>@item.AlumnoNombre</td>
+                    <td>@item.EscuelaNombre</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (profesorSeleccionadoId != 0)
+{
+    <p>No hay alumnos asignados a este profesor.</p>
+}
+
+@code {
+    private List<ProfesorModel> profesores = new();
+    private List<AlumnoProfesorEscuelaDTO> lstAlumnosProf = new();
+    private int profesorSeleccionadoId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var respProf = await Api.GetListaProfesores();  // Asumo que tienes este método para cargar profesores
+        if (respProf?.DataResponse != null)
+            profesores = respProf.DataResponse;
+    }
+
+    private async Task OnProfesorChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            profesorSeleccionadoId = id;
+            var respAlumnos = await Api.GetAlumnosPorProfesor(profesorSeleccionadoId);
+            if (respAlumnos.CodeStatus)
+            {
+                // Mapea la lista recibida (de ApiServices) a la clase local usada en el componente
+                lstAlumnosProf = respAlumnos.DataResponse
+                    .Select(x => new AlumnoProfesorEscuelaDTO
+                        {
+                            AlumnoId = x.AlumnoId,
+                            AlumnoNombre = x.AlumnoNombre,
+                            EscuelaNombre = x.EscuelaNombre,
+                            ProfesorNombre = x.ProfesorNombre
+                        }).ToList();
+            }
+            else
+            {
+                lstAlumnosProf = new List<AlumnoProfesorEscuelaDTO>();
+            }
+        }
+    }
+
+}

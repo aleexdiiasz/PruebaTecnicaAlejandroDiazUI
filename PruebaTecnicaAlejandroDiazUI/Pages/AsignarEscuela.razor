@@ -1,0 +1,120 @@
+﻿@page "/escuela"
+@using PruebaTecnicaAlejandroDiaz.Models
+@using PruebaTecnicaAlejandroDiazUI.Models
+@inject ApiServices Api
+
+<h3>Asignación de Alumnos a Escuelas</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Alumno</th>
+            <th>Escuela</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (lstAsignaciones?.DataResponse != null)
+        {
+            @foreach (var item in lstAsignaciones.DataResponse)
+            {
+                var alumno = alumnos.FirstOrDefault(a => a.AlumnoId == item.AlumnoId);
+                var escula = escuelas.FirstOrDefault(p => p.EscuelaId == item.EscuelaId);
+
+                <tr>
+                    <td>@item.Id</td>
+                    <td>@($"{alumno?.Nombre} {alumno?.Apellido}")</td>
+                    <td>@($"{escula?.Nombre}")</td>
+                    <td>
+                        <button @onclick="() => Editar(item)">Editar</button>
+                        <button @onclick="() => Eliminar(item.Id)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr><td colspan="4">No se encontraron registros.</td></tr>
+        }
+    </tbody>
+</table>
+
+<h3>@(asignacionActual.Id == 0 ? "Nueva Asignación" : "Editar Asignación")</h3>
+
+<EditForm Model="@asignacionActual" OnValidSubmit="Guardar">
+    <div class="mb-2">
+        <label>Alumno:</label>
+        <select class="form-control" @bind="asignacionActual.AlumnoId">
+            <option value="">-- Selecciona un alumno --</option>
+            @foreach (var a in alumnos)
+            {
+                <option value="@a.AlumnoId">@($"{a.Nombre} {a.Apellido}")</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-2">
+        <label>Escuela:</label>
+        <select class="form-control" @bind="asignacionActual.EscuelaId">
+            <option value="">-- Selecciona un escuela --</option>
+            @foreach (var p in escuelas)
+            {
+                <option value="@p.EscuelaId">@($"{p.Nombre}")</option>
+            }
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</EditForm>
+
+@code {
+    private ResponseModel<List<AlumnoEscuelaModel>> lstAsignaciones = new() { DataResponse = new() };
+    private List<AlumnoModel> alumnos = new();
+    private List<EscuelaModels> escuelas = new();
+    private AlumnoEscuelaModel asignacionActual = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    async Task CargarDatos()
+    {
+        alumnos = (await Api.GetListaAlumnos()).DataResponse;
+        escuelas = (await Api.GetListaEscuela()).DataResponse;
+        lstAsignaciones = await Api.GetListaAlumnosEscuela();
+    }
+
+    void Editar(AlumnoEscuelaModel asignacion)
+    {
+        asignacionActual = new AlumnoEscuelaModel
+            {
+                Id = asignacion.Id,
+                AlumnoId = asignacion.AlumnoId,
+                EscuelaId = asignacion.EscuelaId
+            };
+    }
+
+    async Task Guardar()
+    {
+        if (asignacionActual.Id == 0)
+        {
+            await Api.CreateAlumnoEscuela(asignacionActual);
+        }
+        else
+        {
+            await Api.UpdateAlumnoEscuela(asignacionActual);
+        }
+
+        asignacionActual = new();
+        await CargarDatos();
+    }
+
+    async Task Eliminar(int id)
+    {
+        await Api.DeleteAlumnoEscuela(id);
+        await CargarDatos();
+        asignacionActual = new();
+    }
+}

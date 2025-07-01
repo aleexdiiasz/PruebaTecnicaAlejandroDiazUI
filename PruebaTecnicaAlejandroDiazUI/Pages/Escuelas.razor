@@ -1,0 +1,97 @@
+﻿@page "/escuelas"
+@using PruebaTecnicaAlejandroDiazUI.Models
+@inject HttpClient Http
+@inject ApiServices Api
+
+<h3>Lista de Escuelas</h3>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>ID</th>
+			<th>Código</th>
+			<th>Nombre</th>
+			<th>Descripción</th>
+			<th>Acciones</th>
+		</tr>
+	</thead>
+	<tbody>
+		@if (lstEscuelas?.DataResponse != null)	{
+
+
+			foreach (var escuela in lstEscuelas.DataResponse)
+			{
+				<tr>
+					<td>@escuela.EscuelaId</td>
+					<td>@escuela.Codigo</td>
+					<td>@escuela.Nombre</td>
+					<td>@escuela.Descripcion</td>
+					<td>
+						<button @onclick="() => Editar(escuela)">Editar</button>
+						<button @onclick="() => Eliminar(escuela.EscuelaId)">Eliminar</button>
+					</td>
+				</tr>
+			}
+		}
+		else
+		{
+			<p>Cargando escuelas o no se encontraron registros.</p>
+		}
+	</tbody>
+</table>
+
+<h3>@(escuelaActual.EscuelaId == 0 ? "Agregar Escuela" : "Editar Escuela")</h3>
+
+<EditForm Model="@escuelaActual" OnValidSubmit="Guardar">
+	<InputText @bind-Value="escuelaActual.Codigo" placeholder="Código" class="form-control" />
+	<InputText @bind-Value="escuelaActual.Nombre" placeholder="Nombre" class="form-control" />
+	<InputText @bind-Value="escuelaActual.Descripcion" placeholder="Descripción" class="form-control" />
+	<button type="submit">Guardar</button>
+</EditForm>
+
+@code {
+	List<EscuelaModels> escuelas = new();
+	EscuelaModels escuelaActual = new();
+	private ResponseModel<List<EscuelaModels>> lstEscuelas = new ResponseModel<List<EscuelaModels>> { DataResponse = new List<EscuelaModels>() };
+	private ResponseModel<EscuelaModels> _escuelaActual = new ResponseModel<EscuelaModels> { DataResponse = new EscuelaModels() };
+
+
+	protected override async Task OnInitializedAsync()
+	{
+		lstEscuelas = await Api.GetListaEscuela();
+	}
+
+	void Editar(EscuelaModels e)
+	{
+		escuelaActual = new EscuelaModels
+			{
+				EscuelaId = e.EscuelaId,
+				Codigo = e.Codigo,
+				Nombre = e.Nombre,
+				Descripcion = e.Descripcion
+			};
+	}
+
+	async Task Guardar()
+	{
+		if (escuelaActual.EscuelaId == 0)
+		{
+			_escuelaActual = await Api.CreateEscuela(escuelaActual.Codigo, escuelaActual.Nombre, escuelaActual.Descripcion);
+		}
+		else
+		{
+			_escuelaActual = await Api.UpdateEscuela(escuelaActual.EscuelaId, escuelaActual.Codigo, escuelaActual.Nombre, escuelaActual.Descripcion);
+		}
+
+		lstEscuelas = await Api.GetListaEscuela();
+		escuelaActual = new();
+
+	}
+
+	async Task Eliminar(int id)
+	{
+		await Api.DeleteEscuela(id);
+		lstEscuelas = await Api.GetListaEscuela();
+		escuelaActual = new();
+	}
+}

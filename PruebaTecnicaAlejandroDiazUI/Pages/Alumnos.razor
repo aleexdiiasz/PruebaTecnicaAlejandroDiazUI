@@ -1,0 +1,104 @@
+﻿@page "/alumnos"
+@using PruebaTecnicaAlejandroDiaz.Models
+@using PruebaTecnicaAlejandroDiazUI.Models
+@inject ApiServices Api
+
+<h3>Lista de Alumnos</h3>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>ID</th>
+			<th>Nombre</th>
+			<th>Apellido</th>
+			<th>Fecha Nacimiento</th>
+			<th>Acciones</th>
+		</tr>
+	</thead>
+	<tbody>
+
+		@if (lstAlumnos?.DataResponse != null)
+		{
+
+			@foreach (var alumno in lstAlumnos.DataResponse)
+			{
+				<tr>
+					<td>@alumno.AlumnoId</td>
+					<td>@alumno.Nombre</td>
+					<td>@alumno.Apellido</td>
+					<td>@alumno.FechaNacimiento.ToShortDateString()</td>
+					<td>
+						<button @onclick="() => Editar(alumno)">Editar</button>
+						<button @onclick="() => Eliminar(alumno.AlumnoId)">Eliminar</button>
+					</td>
+				</tr>
+			}
+		}
+		else
+		{
+			<p>No se encontraron registros.</p>
+		}
+
+
+	</tbody>
+</table>
+
+<h3>@(alumnoActual.AlumnoId == 0 ? "Agregar Alumno" : "Editar Alumno")</h3>
+
+<EditForm Model="@alumnoActual" OnValidSubmit="Guardar">
+	<InputText @bind-Value="alumnoActual.Nombre" placeholder="Nombre" class="form-control" />
+	<InputText @bind-Value="alumnoActual.Apellido" placeholder="Apellido" class="form-control" />
+	<InputDate @bind-Value="alumnoActual.FechaNacimiento" class="form-control" />
+	<button type="submit">Guardar</button>
+</EditForm>
+
+@code {
+	private ResponseModel<List<AlumnoModel>> lstAlumnos = new() { DataResponse = new() };
+	private AlumnoModel alumnoActual = new();
+	private ResponseModel<AlumnoModel> _alumnoActual = new() { DataResponse = new() };
+
+	protected override async Task OnInitializedAsync()
+	{
+		lstAlumnos = await Api.GetListaAlumnos();
+
+	}
+
+	void Editar(AlumnoModel alumno)
+	{
+		alumnoActual = new AlumnoModel
+			{
+				AlumnoId = alumno.AlumnoId,
+				Nombre = alumno.Nombre,
+				Apellido = alumno.Apellido,
+				FechaNacimiento = alumno.FechaNacimiento
+			};
+	}
+
+	async Task Guardar()
+	{
+		if (alumnoActual.AlumnoId == 0)
+		{
+			_alumnoActual = await Api.CreateAlumno(
+				alumnoActual.Nombre,
+				alumnoActual.Apellido,
+				alumnoActual.FechaNacimiento);
+		}
+		else
+		{
+			_alumnoActual = await Api.UpdateAlumno(alumnoActual.AlumnoId,
+				alumnoActual.Nombre,
+				alumnoActual.Apellido,
+				alumnoActual.FechaNacimiento);
+		}
+
+		lstAlumnos = await Api.GetListaAlumnos();
+		alumnoActual = new();
+	}
+
+	async Task Eliminar(int id)
+	{
+		await Api.DeleteAlumno(id);
+		lstAlumnos = await Api.GetListaAlumnos();
+		alumnoActual = new();
+	}
+}
